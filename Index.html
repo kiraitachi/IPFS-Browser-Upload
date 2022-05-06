@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://cdn.jsdelivr.net/npm/jquery.min.js@latest" id="jquery-core-js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery-migrate@3.3.2/dist/jquery-migrate.min.js" id="jquery-migrate-js"></script>
+</head>
+<div class="entry-content">
+<div class="wrap">
+	<div id="primary" class="content-area">
+		<main id="main" class="site-main" role="main">
+		<header class="entry-header">
+		<h1 class="entry-title">IPFS Upload</h1>			
+		</header><!-- .entry-header -->
+	<div class="entry-content">		
+<script src="https://cdn.jsdelivr.net/npm/ipfs/dist/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hlsjs-ipfs-loader@latest/dist/index.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function progress(p) {
+            jQuery('#progress').text(p + ' bytes')
+        }
+        async function upload(files, directory) {
+            var ipfs = await window.Ipfs.create({
+                repo: 'ipfs-' + Math.random()
+            }),
+                results = []
+            if (directory) {
+                var fileobjects = []
+                for (var file of files) {
+                    fileobjects.push({ path: file.name, content: file })
+                }
+                for await (var result of ipfs.addAll(fileobjects, { progress: progress, wrapWithDirectory: true })) {
+                    results.push(result)
+                }
+                jQuery.each(results, function (index, value) {
+                    var filetype = files[index] ? files[index].name : 'directory'
+                    if(filetype === 'directory') {
+                        ipfs.pin.add(value.cid)
+                    }
+                    jQuery('#list').append(`<li>${filetype} - <a href="https://cloudflare-ipfs.com/ipfs/${value.cid.string}" target="_blank">${value.cid.string}</a></li>`)
+                })
+            } else {
+                for await (var result of ipfs.addAll(files, { progress: progress })) {
+                    ipfs.pin.add(result.cid)
+                    results.push(result)
+                }
+                jQuery.each(files, function (index, value) {
+                    jQuery('#list').append(`<li>${value.name} - <a href="https://cloudflare-ipfs.com/ipfs/${results[index].path}" target="_blank">${results[index].path}</a></li>`)
+                })
+            }
+        }
+        jQuery('#sendupload').on('click', function (event) {
+            event.preventDefault()
+            event.stopPropagation()
+            if (jQuery('#upload').prop('files') && jQuery('#upload').prop('files').length > 0) {
+                upload(jQuery('#upload').prop('files'), false)
+            }
+        })
+        jQuery('#senduploaddir').on('click', function (event) {
+            event.preventDefault()
+            event.stopPropagation()
+            if (jQuery('#uploaddir').prop('files') && jQuery('#uploaddir').prop('files').length > 0) {
+                upload(jQuery('#uploaddir').prop('files'), true)
+            }
+        })
+    })
+</script>
+<style>
+    .content {
+        margin: 0 auto;
+    }
+
+    .form input {
+        margin: 0.2rem;
+    }
+</style>
+<div class="content">
+    <form>
+        <fieldset class="form">
+            <legend>IPFS – Upload</legend>
+            <label for="upload">Upload File(s)</label>
+            <input id="upload" type="file" multiple="" required="">
+            <input type="submit" id="sendupload" value="Upload">
+        </fieldset>
+    </form>
+    <form>
+        <fieldset class="form">
+            <legend>IPFS – Upload Directory</legend>
+            <label for="uploaddir">Upload Directory</label>
+            <input id="uploaddir" type="file" multiple="" directory="" webkitdirectory="" required="">
+            <input type="submit" id="senduploaddir" value="Upload">
+        </fieldset>
+    </form>
+    <div>Progress: <span id="progress">0 bytes</span></div>
+    <ul id="list"></ul>
+</div>
+</html>
